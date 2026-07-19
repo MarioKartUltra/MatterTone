@@ -1,0 +1,15 @@
+# Build outputs
+/build/
+/build_*/
+*.o
+*.a
+
+# Local third-party checkouts (provide your own; see README)
+/external/JUCE
+/external/fCWT
+/external/foleys_gui_magic
+
+# macOS
+.DS_Store
+
+# foleys WYSIWYG auto-saved layouts land next to sources; keep those.
