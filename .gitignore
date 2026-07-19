@@ -13,3 +13,4 @@
 .DS_Store
 
 # foleys WYSIWYG auto-saved layouts land next to sources; keep those.
+.claude/
