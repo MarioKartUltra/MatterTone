@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- MatterTone II default layout: "laboratory instrument, not SaaS panel".
+     Molten-copper accent on graphite warm-black; the fCWT scalogram is the hero;
+     controls form the instrument fascia around it. Stealth-beta: no title text,
+     identity = sigil + accent. Editable in-plugin (WYSIWYG palette is enabled). -->
+<magic>
+  <Styles>
+    <Style name="default">
+      <Nodes/>
+      <Classes>
+        <hero background-color="FF100C06" border="0" margin="2" padding="2" radius="4"/>
+        <fascia background-color="FF221A11" border-color="FF3D3122" border="1" radius="6"
+                margin="3" padding="6" flex-direction="row" caption-placement="centred-top"
+                caption-color="FFB5A895" caption-size="14"/>
+        <chipbar flex-direction="column" background-color="00000000" border="0" margin="2" padding="2"/>
+        <beta background-color="FF80491F" radius="4" label-text="FFF4EDE3" justification="centred"/>
+      </Classes>
+      <Types>
+        <Slider border="0" slider-type="rotary" slider-textbox="textbox-below"
+                lookAndFeel="LnfV2" caption-size="13" caption-color="FFB5A895"
+                rotary-fill="FFE0813E" background-color="00000000"/>
+        <ComboBox border="0" max-height="44" caption-size="12" caption-color="FFB5A895"
+                  lookAndFeel="LnfV2"/>
+        <ToggleButton border="0" max-height="36" caption-size="0" lookAndFeel="LnfV2"
+                      text-color="FFF4EDE3"/>
+        <Label border="0" background-color="00000000"/>
+        <Meter border="0" background-color="FF100C06"/>
+        <Plot border="0" margin="0" padding="0" background-color="00000000"
+              plot-color="FFE0813E" plot-fill-color="30E0813E"/>
+      </Types>
+      <Palettes>
+        <default/>
+      </Palettes>
+    </Style>
+  </Styles>
+
+  <View id="root" display="flexbox" flex-direction="column" background-color="FF171209"
+        resizable="1" resize-corner="1" width="1140" height="780"
+        min-width="900" min-height="620" border="0" padding="4" margin="0">
+
+    <!-- ── header: sigil · engine + seed chips · BETA · output meter ─────── -->
+    <View max-height="64" flex-direction="row" background-color="00000000" border="0">
+      <Sigil max-width="60" tooltip="Nonlinear-physics instrument — beta"/>
+      <ComboBox parameter="engine" caption="Engine" max-width="150"
+                tooltip="Physical model per voice: coupled nonlinear modal resonators, or the percussion membrane (Berger tension + Helmholtz cavity + snare wires)"/>
+      <ComboBox parameter="seedMode" caption="Seed Policy" max-width="160"
+                tooltip="Fixed: one global seed. Per-Key: each key has its own reproducible character. Random on Strike: fresh seed every hit"/>
+      <Slider parameter="seed" caption="Seed" slider-type="linear-horizontal" max-width="180"
+              tooltip="Deterministic material seed — same seed, same sound"/>
+      <Slider parameter="agc" caption="Attack AGC" max-width="110"
+              tooltip="Per-voice automatic gain so preset attacks never hit the limiter"/>
+      <View flex-grow="1" background-color="00000000" border="0"/>
+      <Label class="beta" text="BETA" max-width="64" max-height="28" font-size="15"/>
+      <Meter source="output" max-width="70" tooltip="Output level"/>
+    </View>
+
+    <!-- ── hero: live fCWT scalogram of the output ───────────────────────── -->
+    <View class="hero" flex-grow="3">
+      <Scalogram flex-grow="1" tooltip="Live wavelet scalogram (fCWT) of the output"/>
+    </View>
+
+    <!-- ── fascia row 1: material / percussion (mode-dependent) + excitation -->
+    <View flex-grow="2" flex-direction="row" background-color="00000000" border="0">
+      <View class="fascia" caption="Material" flex-grow="3">
+        <Slider parameter="tension" caption="Tension" tooltip="Baseline stiffness — head/string tuning"/>
+        <Slider parameter="damping" caption="Damping" tooltip="Linear modal damping"/>
+        <Slider parameter="nonlinStiffness" caption="Nonlin Stiff" visibility="showModal"
+                tooltip="Cubic/quintic stiffness magnitude"/>
+        <Slider parameter="hardening" caption="Harden" visibility="showModal"
+                tooltip="Softening (−) to hardening (+) spring"/>
+        <Slider parameter="nonlinDamping" caption="Nonlin Damp" visibility="showModal"
+                tooltip="|v|·v damping"/>
+        <Slider parameter="coupling" caption="Coupling" visibility="showModal"
+                tooltip="Intermodal energy transfer"/>
+        <Slider parameter="memory" caption="Memory" visibility="showModal"
+                tooltip="Bounded material-state memory depth"/>
+        <Slider parameter="healing" caption="Healing" visibility="showModal"
+                tooltip="Material-state recovery rate"/>
+      </View>
+      <View class="fascia" caption="Percussion" flex-grow="3" visibility="showPerc">
+        <Slider parameter="membraneModes" caption="Modes" tooltip="Membrane mode count"/>
+        <Slider parameter="bergerAmount" caption="Berger" tooltip="Tension nonlinearity — the pitch-glide thump"/>
+        <Slider parameter="cavityAmount" caption="Cavity" tooltip="Helmholtz cavity coupling"/>
+        <Slider parameter="cavityTune" caption="Cav Tune" tooltip="Cavity resonance relative to the fundamental"/>
+        <Slider parameter="cavityLoss" caption="Cav Loss" tooltip="Orifice drag on the cavity mode"/>
+        <Slider parameter="wireAmount" caption="Wires" tooltip="Snare-wire contact bank engagement"/>
+        <Slider parameter="dampTilt" caption="Damp Tilt" tooltip="Extra damping on high modes (Rayleigh b·omega squared)"/>
+        <Slider parameter="malletHardness" caption="Mallet" tooltip="Mallet Hertz-contact stiffness"/>
+      </View>
+      <View class="fascia" caption="Excitation" flex-grow="2">
+        <View class="chipbar" max-width="140">
+          <ComboBox parameter="excitation" caption="Mode" visibility="showModal"
+                    tooltip="Pluck injection or slow load-then-snap"/>
+          <ToggleButton parameter="attackOvr" text="Timed Attack"
+                        tooltip="Override the attack knob with an absolute time"/>
+          <ToggleButton parameter="attackSync" text="Attack: Beats"
+                        tooltip="Attack time follows the host tempo"/>
+          <ComboBox parameter="attackDiv" caption="Attack Div" tooltip="Attack beat division"/>
+        </View>
+        <Slider parameter="attack" caption="Attack" tooltip="Onset ramp (de-click)"/>
+        <Slider parameter="attackMs" caption="Attack ms" tooltip="Attack time in milliseconds (timed mode)"/>
+        <Slider parameter="pluckEnergy" caption="Energy" tooltip="Injected strike/pluck energy"/>
+        <Slider parameter="strikePosition" caption="Position" tooltip="Strike position — modal balance"/>
+        <Slider parameter="velocitySens" caption="Velocity" tooltip="MIDI velocity to energy"/>
+      </View>
+    </View>
+
+    <!-- ── fascia row 2: LFOs · dynamics/tone · crackle · global ─────────── -->
+    <View flex-grow="2" flex-direction="row" background-color="00000000" border="0">
+      <View class="fascia" caption="LFO A" flex-grow="2" flex-direction="row">
+        <View class="chipbar" max-width="130">
+          <ComboBox parameter="lfoAShape" caption="Shape"/>
+          <ComboBox parameter="lfoARetrig" caption="Retrig" tooltip="Free-running, key-retriggered, or transport-locked"/>
+          <ToggleButton parameter="lfoASync" text="Beats" tooltip="Rate follows the host tempo"/>
+          <ComboBox parameter="lfoADiv" caption="Division"/>
+        </View>
+        <Slider parameter="lfoARateHz" caption="Rate" tooltip="Free rate in Hz"/>
+        <Slider parameter="lfoAPhase" caption="Phase"/>
+        <Slider parameter="driveModA" caption="→Drive" tooltip="LFO A depth on strike energy"/>
+        <Slider parameter="dampModA" caption="→Damp" tooltip="LFO A depth on damping"/>
+        <Slider parameter="coupModA" caption="→Coup" tooltip="LFO A depth on coupling"/>
+        <Slider parameter="crackleModA" caption="→Crackle" tooltip="LFO A depth on crackle coupling"/>
+      </View>
+      <View class="fascia" caption="LFO B" flex-grow="2" flex-direction="row">
+        <View class="chipbar" max-width="130">
+          <ComboBox parameter="lfoBShape" caption="Shape"/>
+          <ComboBox parameter="lfoBRetrig" caption="Retrig"/>
+          <ToggleButton parameter="lfoBSync" text="Beats"/>
+          <ComboBox parameter="lfoBDiv" caption="Division"/>
+        </View>
+        <Slider parameter="lfoBRateHz" caption="Rate"/>
+        <Slider parameter="lfoBPhase" caption="Phase"/>
+        <Slider parameter="driveModB" caption="→Drive"/>
+        <Slider parameter="dampModB" caption="→Damp"/>
+        <Slider parameter="coupModB" caption="→Coup"/>
+        <Slider parameter="crackleModB" caption="→Crackle"/>
+      </View>
+      <View class="fascia" caption="Events" flex-grow="1" visibility="showModal">
+        <Slider parameter="brittleness" caption="Brittle" tooltip="Snap/crackle barrier sharpness"/>
+        <Slider parameter="roughness" caption="Rough" tooltip="Crackle-network heterogeneity"/>
+        <Slider parameter="crackleCoupling" caption="Crackle" tooltip="Pop-cascade network coupling"/>
+        <Slider parameter="snapDepth" caption="Snap" tooltip="Bistable well depth"/>
+        <Slider parameter="loadingRate" caption="Load Rate" tooltip="Snap-loading ramp rate"/>
+      </View>
+      <View class="fascia" caption="Output" flex-grow="1">
+        <Slider parameter="eventMix" caption="Events" tooltip="Contact/snap/crackle weight in the output"/>
+        <Slider parameter="bodyMix" caption="Body" tooltip="Body-filter blend"/>
+        <Slider parameter="output" caption="Level" tooltip="Output gain"/>
+        <ComboBox parameter="oversampling" caption="OS" tooltip="Integrator oversampling"/>
+      </View>
+    </View>
+
+    <!-- ── keyboard ──────────────────────────────────────────────────────── -->
+    <KeyboardComponent max-height="70" border="0" background-color="FF100C06"/>
+  </View>
+</magic>

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MatterTone VERSION 0.1.0 LANGUAGES C CXX)
+project(MatterTone VERSION 2.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,29 +41,35 @@ endif()
 # =============================================================================
 #  Plugin target
 # =============================================================================
+# v2 identity (V2_CONVENTIONS.md): NEW plugin code / product name / bundle id so
+# the installed v1 bundles ("MatterTone", Mtpc, com.mattertone.poc) coexist.
 juce_add_plugin(MatterTone
     PLUGIN_MANUFACTURER_CODE Mttn
-    PLUGIN_CODE              Mtpc
+    PLUGIN_CODE              Mtp2
     COMPANY_NAME             "MatterTone"
-    BUNDLE_ID                com.mattertone.poc
+    BUNDLE_ID                com.mattertone.v2
     IS_SYNTH                 TRUE
     NEEDS_MIDI_INPUT         TRUE
     NEEDS_MIDI_OUTPUT        FALSE
     IS_MIDI_EFFECT           FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD  TRUE
-    PLUGIN_NAME              "MatterTone POC"
-    PRODUCT_NAME             "MatterTone"
+    PLUGIN_NAME              "MatterTone II"
+    PRODUCT_NAME             "MatterTone II"
     FORMATS                  VST3 Standalone AU)
 
 juce_generate_juce_header(MatterTone)
+
+# Default GUI layout (foleys magic.xml) baked in as binary data.
+juce_add_binary_data(MatterToneAssets SOURCES Resources/magic.xml)
 
 target_sources(MatterTone PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/dsp/MatterVoice.cpp)
 
-target_include_directories(MatterTone PRIVATE Source Source/dsp)
+target_include_directories(MatterTone PRIVATE Source Source/dsp Source/common)
+target_link_libraries(MatterTone PRIVATE MatterToneAssets)
 
 target_compile_definitions(MatterTone PUBLIC
     JUCE_WEB_BROWSER=0
@@ -125,21 +131,28 @@ if(MATTER_USE_FCWT)
     endif()
     message(STATUS "MatterTone: using fCWT at ${FCWT_DIR}")
 
-    # Prefer the STATIC fftw archive so the plugin has no external dylib dependency
-    # (self-contained; and a host's plugin scanner won't reject a missing/foreign
-    # /opt/homebrew dylib). Fall back to the shared lib if the archive is absent.
-    set(_matter_saved_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    find_library(FFTW3F_STATIC fftw3f PATHS /opt/homebrew/opt/fftw/lib /usr/local/lib)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ${_matter_saved_suffixes})
-    if(FFTW3F_STATIC)
-        set(FFTW3F_LIB ${FFTW3F_STATIC})
-        message(STATUS "MatterTone: linking FFTW statically (${FFTW3F_LIB})")
+    # Prefer the UNIVERSAL static fftw archive (arm64 + x86_64, prebuilt at
+    # ~/projects/fftw-universal) so the universal plugin build links cleanly —
+    # the homebrew archive is arm64-only and must NOT be picked for universal
+    # builds. Fall back to homebrew static, then shared.
+    if(EXISTS "$ENV{HOME}/projects/fftw-universal/lib/libfftw3f.a")
+        set(FFTW3F_LIB "$ENV{HOME}/projects/fftw-universal/lib/libfftw3f.a")
+        set(FFTW3_INC  "$ENV{HOME}/projects/fftw-universal/include")
+        message(STATUS "MatterTone: linking universal static FFTW (${FFTW3F_LIB})")
     else()
-        find_library(FFTW3F_LIB fftw3f PATHS /opt/homebrew/opt/fftw/lib /usr/local/lib REQUIRED)
-        message(WARNING "MatterTone: static fftw not found — linking shared libfftw3f (external dylib dependency)")
+        set(_matter_saved_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+        find_library(FFTW3F_STATIC fftw3f PATHS /opt/homebrew/opt/fftw/lib /usr/local/lib)
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ${_matter_saved_suffixes})
+        if(FFTW3F_STATIC)
+            set(FFTW3F_LIB ${FFTW3F_STATIC})
+            message(STATUS "MatterTone: linking FFTW statically (${FFTW3F_LIB})")
+        else()
+            find_library(FFTW3F_LIB fftw3f PATHS /opt/homebrew/opt/fftw/lib /usr/local/lib REQUIRED)
+            message(WARNING "MatterTone: static fftw not found — linking shared libfftw3f (external dylib dependency)")
+        endif()
+        find_path(FFTW3_INC fftw3.h PATHS /opt/homebrew/opt/fftw/include /usr/local/include REQUIRED)
     endif()
-    find_path(FFTW3_INC fftw3.h PATHS /opt/homebrew/opt/fftw/include /usr/local/include REQUIRED)
 
     # fCWT compiled scalar (no -mavx on arm64) and single-threaded (no OpenMP dep).
     target_compile_definitions(MatterTone PRIVATE MATTER_USE_FCWT=1 SINGLE_THREAD=1)
@@ -158,7 +171,7 @@ endif()
 #  Offline render + test harness (pure C++, NO JUCE) — always built
 # =============================================================================
 add_executable(matter_render tools/matter_render.cpp Source/dsp/MatterVoice.cpp)
-target_include_directories(matter_render PRIVATE Source/dsp)
+target_include_directories(matter_render PRIVATE Source/dsp Source/common)
 target_compile_definitions(matter_render PRIVATE MATTER_ENABLE_MONITOR=1)
 set_target_properties(matter_render PROPERTIES CXX_STANDARD 17)
 

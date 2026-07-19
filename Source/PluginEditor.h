@@ -51,6 +51,47 @@ private:
 };
 #endif
 
+#if MATTER_USE_FOLEYS
+// Abstract identity mark (stealth-beta: no title text anywhere in the GUI).
+// Concentric "membrane modes" glyph in the molten-copper accent, drawn in code.
+class SigilComponent : public juce::Component
+{
+public:
+    void paint(juce::Graphics& g) override
+    {
+        const auto b = getLocalBounds().toFloat().reduced(2.0f);
+        const float d = juce::jmin(b.getWidth(), b.getHeight());
+        const auto c = b.getCentre();
+        const juce::Colour accent(0xFFE0813E);
+        for (int i = 0; i < 4; ++i)
+        {
+            const float r = d * 0.5f * (1.0f - 0.22f * (float) i);
+            g.setColour(accent.withAlpha(0.25f + 0.25f * (float) i));
+            g.drawEllipse(c.x - r, c.y - r, 2.0f * r, 2.0f * r, i == 3 ? 2.0f : 1.0f);
+        }
+        g.setColour(accent);
+        g.fillEllipse(c.x - d * 0.05f, c.y - d * 0.05f, d * 0.1f, d * 0.1f);
+    }
+};
+
+class SigilItem : public foleys::GuiItem
+{
+public:
+    SigilItem(foleys::MagicGUIBuilder& b, const juce::ValueTree& node) : foleys::GuiItem(b, node)
+    {
+        addAndMakeVisible(sigil);
+    }
+    juce::Component* getWrappedComponent() override { return &sigil; }
+    void update() override {}
+    static std::unique_ptr<foleys::GuiItem> factory(foleys::MagicGUIBuilder& b, const juce::ValueTree& node)
+    {
+        return std::make_unique<SigilItem>(b, node);
+    }
+private:
+    SigilComponent sigil;
+};
+#endif
+
 #if MATTER_USE_FOLEYS && MATTER_USE_FCWT
 // Makes the fCWT scalogram a first-class foleys widget: it appears in the
 // WYSIWYG palette and can be dropped into the editable layout. It polls the
