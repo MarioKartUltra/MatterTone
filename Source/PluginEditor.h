@@ -74,6 +74,65 @@ public:
     }
 };
 
+// Header "Presets" button: saves the current parameter state to, and loads it
+// back from, ~/Music/MatterTone II/Presets (user presets; the factory programs
+// remain host-side). Fully async — no modal loops, message thread only.
+class PresetMenuItem : public foleys::GuiItem
+{
+public:
+    PresetMenuItem(foleys::MagicGUIBuilder& b, const juce::ValueTree& node) : foleys::GuiItem(b, node)
+    {
+        proc = dynamic_cast<MatterToneProcessor*>(b.getMagicState().getProcessor());
+        button.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF221A11));
+        button.setColour(juce::TextButton::textColourOffId, juce::Colour(0xFFE0813E));
+        button.onClick = [this] { showMenu(); };
+        addAndMakeVisible(button);
+    }
+    juce::Component* getWrappedComponent() override { return &button; }
+    void update() override {}
+    static std::unique_ptr<foleys::GuiItem> factory(foleys::MagicGUIBuilder& b, const juce::ValueTree& node)
+    {
+        return std::make_unique<PresetMenuItem>(b, node);
+    }
+private:
+    void showMenu()
+    {
+        if (proc == nullptr) return;
+        juce::PopupMenu menu;
+        menu.addItem(1, "Save Preset...");
+        const auto files = proc->getUserPresetFiles();
+        if (! files.isEmpty()) menu.addSeparator();
+        for (int i = 0; i < files.size(); ++i)
+            menu.addItem(100 + i, files.getReference(i).getFileNameWithoutExtension());
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&button),
+                           [this, files](int result)
+                           {
+                               if (result == 1)
+                                   promptForSave();
+                               else if (result >= 100 && result - 100 < files.size())
+                                   proc->loadUserPreset(files.getReference(result - 100));
+                           });
+    }
+    void promptForSave()
+    {
+        auto* w = new juce::AlertWindow("Save Preset",
+                                        "Saved to " + MatterToneProcessor::getUserPresetsDirectory().getFullPathName(),
+                                        juce::MessageBoxIconType::NoIcon);
+        w->addTextEditor("name", "", "Name:");
+        w->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        w->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        w->enterModalState(true,
+                           juce::ModalCallbackFunction::create([this, w](int result)
+                           {
+                               if (result == 1 && proc != nullptr)
+                                   proc->saveUserPreset(w->getTextEditorContents("name"));
+                           }),
+                           true); // delete the window when dismissed
+    }
+    juce::TextButton button { "Presets" };
+    MatterToneProcessor* proc = nullptr;
+};
+
 class SigilItem : public foleys::GuiItem
 {
 public:

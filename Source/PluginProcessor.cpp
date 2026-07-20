@@ -235,6 +235,7 @@ void MatterToneProcessor::initialiseBuilder(foleys::MagicGUIBuilder& builder)
     builder.registerJUCELookAndFeels();
     builder.registerLookAndFeel("LnfV2", std::make_unique<acv2::ui::LnfV2>(acv2::theme::kMatterTone));
     builder.registerFactory("Sigil", &SigilItem::factory);
+    builder.registerFactory("PresetMenu", &PresetMenuItem::factory);
    #if MATTER_USE_FCWT
     // Expose the fCWT scalogram as a draggable widget in the WYSIWYG palette.
     builder.registerFactory("Scalogram", &ScalogramItem::factory);
@@ -507,6 +508,43 @@ void MatterToneProcessor::setCurrentProgram(int index)
     if (index < 0 || index >= (int) presets.size()) return;
     currentProgram = index;
     applyPreset(presets[(size_t) index].params);
+}
+
+// ---- user presets (~/Music/MatterTone II/Presets) ----------------------------
+juce::File MatterToneProcessor::getUserPresetsDirectory()
+{
+    return juce::File::getSpecialLocation(juce::File::userMusicDirectory)
+               .getChildFile("MatterTone II")
+               .getChildFile("Presets");
+}
+
+juce::Array<juce::File> MatterToneProcessor::getUserPresetFiles() const
+{
+    auto files = getUserPresetsDirectory().findChildFiles(juce::File::findFiles, false, "*.mtpreset");
+    files.sort();
+    return files;
+}
+
+bool MatterToneProcessor::saveUserPreset(const juce::String& name)
+{
+    const auto safe = juce::File::createLegalFileName(name.trim());
+    if (safe.isEmpty()) return false;
+
+    auto dir = getUserPresetsDirectory();
+    if (! dir.createDirectory()) return false;
+
+    auto xml = apvts.copyState().createXml();
+    if (xml == nullptr) return false;
+    xml->setAttribute("presetName", name.trim());
+    return xml->writeTo(dir.getChildFile(safe + ".mtpreset"));
+}
+
+bool MatterToneProcessor::loadUserPreset(const juce::File& presetFile)
+{
+    auto xml = juce::parseXML(presetFile);
+    if (xml == nullptr || ! xml->hasTagName(apvts.state.getType())) return false;
+    apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    return true;
 }
 
 // ---- state -------------------------------------------------------------------

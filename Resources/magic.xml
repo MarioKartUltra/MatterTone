@@ -51,6 +51,8 @@
       <Slider parameter="agc" caption="Attack AGC" max-width="110"
               tooltip="Per-voice automatic gain so preset attacks never hit the limiter"/>
       <View flex-grow="1" background-color="00000000" border="0"/>
+      <PresetMenu max-width="96" max-height="40"
+                  tooltip="Save / load user presets (~/Music/MatterTone II/Presets)"/>
       <Label class="beta" text="BETA" max-width="64" max-height="28" font-size="15"/>
       <Meter source="output" max-width="70" tooltip="Output level"/>
     </View>

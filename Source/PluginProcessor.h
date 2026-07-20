@@ -151,6 +151,14 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
    #endif
 
+    // ---- user presets (message thread only) -----------------------------------
+    // Parameter snapshots saved as XML in ~/Music/MatterTone II/Presets
+    // (*.mtpreset). Factory programs above stay host-side and read-only.
+    static juce::File getUserPresetsDirectory();
+    juce::Array<juce::File> getUserPresetFiles() const;
+    bool saveUserPreset(const juce::String& name);
+    bool loadUserPreset(const juce::File& presetFile);
+
     // ---- editor helpers -------------------------------------------------------
     juce::AudioProcessorValueTreeState& state() { return apvts; }
     void panic()              { synth.panic(); }
