@@ -13,8 +13,8 @@ endif()
 # -----------------------------------------------------------------------------
 # Options
 # -----------------------------------------------------------------------------
-option(MATTER_USE_FOLEYS "Build the GUI with foleys_gui_magic (WYSIWYG editor + meters)" OFF)
-option(MATTER_USE_FCWT   "Build the real-time fCWT scalogram view (needs FFTW3f)"        OFF)
+option(MATTER_USE_FOLEYS "Build the GUI with foleys_gui_magic (WYSIWYG editor + meters)" ON)
+option(MATTER_USE_FCWT   "Build the real-time fCWT scalogram view (needs FFTW3f)"        ON)
 
 # -----------------------------------------------------------------------------
 # JUCE — use a local checkout (no network / no global install).
@@ -178,3 +178,21 @@ set_target_properties(matter_render PROPERTIES CXX_STANDARD 17)
 enable_testing()
 add_test(NAME dsp_core_tests
          COMMAND matter_render --test-only --out ${CMAKE_BINARY_DIR}/renders)
+
+# =============================================================================
+#  Offscreen UI screenshot harness (dev tool — NOT a test, NOT a bundle)
+#  Links the juce_add_plugin shared-code static library so it gets the
+#  processor + foleys editor + all JUCE modules + BinaryData, without building
+#  or installing any VST3/AU/Standalone bundle.
+# =============================================================================
+if(MATTER_USE_FOLEYS)
+    add_executable(mattertone_shot tools/mattertone_shot.cpp)
+    # Re-export the shared code's resolved usage requirements (module headers,
+    # JUCE_MODULE_AVAILABLE_*, JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED, JucePlugin_*).
+    target_include_directories(mattertone_shot PRIVATE $<TARGET_PROPERTY:MatterTone,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(mattertone_shot PRIVATE $<TARGET_PROPERTY:MatterTone,COMPILE_DEFINITIONS>)
+    target_compile_options(mattertone_shot PRIVATE $<TARGET_PROPERTY:MatterTone,COMPILE_OPTIONS>)
+    target_link_libraries(mattertone_shot PRIVATE MatterTone)
+    set_target_properties(mattertone_shot PROPERTIES
+        CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+endif()

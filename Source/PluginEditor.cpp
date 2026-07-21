@@ -49,7 +49,7 @@ MatterToneEditor::MatterToneEditor(MatterToneProcessor& p)
     keyboard.setAvailableRange(36, 96);
     keyboard.setLowestVisibleKey(48);
     addAndMakeVisible(keyboard);
-    titleLabel.setText("MatterTone POC", juce::dontSendNotification);
+    titleLabel.setText("", juce::dontSendNotification);   // stealth beta: no plugin-title text
     titleLabel.setFont(juce::Font(18.0f, juce::Font::bold));
     titleLabel.setColour(juce::Label::textColourId, juce::Colour(0xff54d6b0));
     addAndMakeVisible(titleLabel);

@@ -150,6 +150,7 @@
         <Slider parameter="bodyMix" caption="Body" tooltip="Body-filter blend"/>
         <Slider parameter="output" caption="Level" tooltip="Output gain"/>
         <ComboBox parameter="oversampling" caption="OS" tooltip="Integrator oversampling"/>
+        <Slider parameter="numVoices" caption="Voices" tooltip="Maximum simultaneous notes (polyphony)"/>
       </View>
     </View>
 
