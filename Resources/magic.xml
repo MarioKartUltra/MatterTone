@@ -17,7 +17,7 @@
         <beta background-color="FF80491F" radius="4" label-text="FFF4EDE3" justification="centred"/>
       </Classes>
       <Types>
-        <Slider border="0" slider-type="rotary" slider-textbox="textbox-below"
+        <Slider border="0" slider-type="rotary-horizontal-vertical" slider-textbox="textbox-below"
                 lookAndFeel="LnfV2" caption-size="13" caption-color="FFB5A895"
                 rotary-fill="FFE0813E" background-color="00000000"/>
         <ComboBox border="0" max-height="44" caption-size="12" caption-color="FFB5A895"
