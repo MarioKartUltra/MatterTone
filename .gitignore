@@ -14,3 +14,6 @@
 
 # foleys WYSIWYG auto-saved layouts land next to sources; keep those.
 .claude/
+
+# foleys WYSIWYG editor autosaves
+/Resources/magic.sav*.xml
