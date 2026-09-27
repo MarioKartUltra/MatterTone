@@ -14,9 +14,10 @@ endif()
 # Options
 # -----------------------------------------------------------------------------
 option(MATTER_USE_FOLEYS "Build the GUI with foleys_gui_magic (WYSIWYG editor + meters)" ON)
-# The WYSIWYG editor window opens next to the plugin. Turn it OFF for builds that
-# go to other people (it also bakes this source path into the binary).
-option(MATTERTONE_GUI_EDITOR "Open the foleys WYSIWYG editor window with the plugin" ON)
+# The foleys WYSIWYG editor is a second window that opens next to the plugin.
+# OFF by default. Configure with -DMATTERTONE_GUI_EDITOR=ON to design the layout
+# (it also bakes this source path into the binary, so never ship that build).
+option(MATTERTONE_GUI_EDITOR "Open the foleys WYSIWYG editor window with the plugin" OFF)
 # OFF builds the bundles without copying them into ~/Library/Audio/Plug-Ins.
 option(MATTERTONE_INSTALL_AFTER_BUILD "Copy the plugins into the user plug-in folders after building" ON)
 option(MATTER_USE_FCWT   "Build the real-time fCWT scalogram view (needs FFTW3f)"        ON)
