@@ -14,6 +14,11 @@ endif()
 # Options
 # -----------------------------------------------------------------------------
 option(MATTER_USE_FOLEYS "Build the GUI with foleys_gui_magic (WYSIWYG editor + meters)" ON)
+# The WYSIWYG editor window opens next to the plugin. Turn it OFF for builds that
+# go to other people (it also bakes this source path into the binary).
+option(MATTERTONE_GUI_EDITOR "Open the foleys WYSIWYG editor window with the plugin" ON)
+# OFF builds the bundles without copying them into ~/Library/Audio/Plug-Ins.
+option(MATTERTONE_INSTALL_AFTER_BUILD "Copy the plugins into the user plug-in folders after building" ON)
 option(MATTER_USE_FCWT   "Build the real-time fCWT scalogram view (needs FFTW3f)"        ON)
 
 # -----------------------------------------------------------------------------
@@ -53,7 +58,7 @@ juce_add_plugin(MatterTone
     NEEDS_MIDI_OUTPUT        FALSE
     IS_MIDI_EFFECT           FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    COPY_PLUGIN_AFTER_BUILD  TRUE
+    COPY_PLUGIN_AFTER_BUILD  ${MATTERTONE_INSTALL_AFTER_BUILD}
     PLUGIN_NAME              "MatterTone II"
     PRODUCT_NAME             "MatterTone II"
     FORMATS                  VST3 Standalone AU)
@@ -107,7 +112,7 @@ if(MATTER_USE_FOLEYS)
     set_target_properties(MatterTone PROPERTIES CXX_STANDARD 20)
     target_compile_definitions(MatterTone PUBLIC
         MATTER_USE_FOLEYS=1
-        FOLEYS_SHOW_GUI_EDITOR_PALLETTE=1
+        FOLEYS_SHOW_GUI_EDITOR_PALLETTE=$<BOOL:${MATTERTONE_GUI_EDITOR}>
         FOLEYS_ENABLE_BINARY_DATA=0
         FOLEYS_ENABLE_OPEN_GL_CONTEXT=0)
 
@@ -135,9 +140,14 @@ if(MATTER_USE_FCWT)
     # ~/projects/fftw-universal) so the universal plugin build links cleanly —
     # the homebrew archive is arm64-only and must NOT be picked for universal
     # builds. Fall back to homebrew static, then shared.
-    if(EXISTS "$ENV{HOME}/projects/fftw-universal/lib/libfftw3f.a")
-        set(FFTW3F_LIB "$ENV{HOME}/projects/fftw-universal/lib/libfftw3f.a")
-        set(FFTW3_INC  "$ENV{HOME}/projects/fftw-universal/include")
+    # -DMATTER_FFTW_DIR=... points at another prebuilt copy (lib/libfftw3f.a and
+    # include/fftw3.h), e.g. one built with -ffile-prefix-map for builds that go
+    # to other people.
+    set(MATTER_FFTW_DIR "$ENV{HOME}/projects/fftw-universal" CACHE PATH
+        "Prebuilt universal static FFTW3f: lib/libfftw3f.a and include/fftw3.h")
+    if(EXISTS "${MATTER_FFTW_DIR}/lib/libfftw3f.a")
+        set(FFTW3F_LIB "${MATTER_FFTW_DIR}/lib/libfftw3f.a")
+        set(FFTW3_INC  "${MATTER_FFTW_DIR}/include")
         message(STATUS "MatterTone: linking universal static FFTW (${FFTW3F_LIB})")
     else()
         set(_matter_saved_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})

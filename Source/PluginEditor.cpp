@@ -424,7 +424,7 @@ void ScalogramComponent::paint(juce::Graphics& g)
     g.setColour(juce::Colours::white.withAlpha(0.6f));
     g.setFont(juce::Font(11.0f));
     const char* mm = view.magMode == 1 ? "log" : (view.magMode == 2 ? "dB" : "lin");
-    g.drawText(juce::String("CWT (fCWT) · ") + mm, getLocalBounds().reduced(4), juce::Justification::topLeft);
+    g.drawText(juce::String::fromUTF8("CWT (fCWT) \xc2\xb7 ") + mm, getLocalBounds().reduced(4), juce::Justification::topLeft);
     g.drawText("hi f", getLocalBounds().reduced(4), juce::Justification::topRight);
     g.drawText("lo f", getLocalBounds().reduced(4), juce::Justification::bottomRight);
 }

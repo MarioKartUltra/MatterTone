@@ -189,6 +189,9 @@ private:
     // magicState properties; params all stay registered — UI-only).
     void parameterChanged(const juce::String&, float) override { triggerAsyncUpdate(); }
     void handleAsyncUpdate() override;
+    static constexpr const char* kViewParams[] { pid::engine, pid::attackOvr, pid::attackSync,
+                                                 pid::loadOvr, pid::loadSync,
+                                                 pid::lfoASync, pid::lfoBSync };
 
     double sr = 48000.0;
     int    currentProgram = 0;

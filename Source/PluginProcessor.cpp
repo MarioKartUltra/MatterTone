@@ -32,10 +32,26 @@ namespace
                                                  : juce::String(juce::roundToInt(v)) + " ms"; });
     }
 
+    // "35 %" out, and "35 %" or "35" back in (without the second half, typing a
+    // percentage into a knob's text box read as 35 = far above 1 = full scale)
     juce::AudioParameterFloatAttributes pctAttributes()
     {
+        return juce::AudioParameterFloatAttributes()
+            .withStringFromValueFunction([](float v, int)
+                { return juce::String(juce::roundToInt(v * 100.0f)) + " %"; })
+            .withValueFromStringFunction([](const juce::String& t)
+                { return t.retainCharacters("+-0123456789.,").replaceCharacter(',', '.').getFloatValue() / 100.0f; });
+    }
+
+    // two decimals, and no "-0.00"
+    juce::AudioParameterFloatAttributes plainAttributes()
+    {
         return juce::AudioParameterFloatAttributes().withStringFromValueFunction(
-            [](float v, int) { return juce::String(juce::roundToInt(v * 100.0f)) + " %"; });
+            [](float v, int)
+            {
+                const float r = std::round(v * 100.0f) / 100.0f;
+                return juce::String(std::abs(r) < 0.005f ? 0.0f : r, 2);
+            });
     }
 
     juce::AudioParameterFloatAttributes hzAttributes()
@@ -50,11 +66,13 @@ APVTS::ParameterLayout MatterToneProcessor::createLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
 
-    auto fParam = [&](const char* id, const char* name, juce::NormalisableRange<float> r, float def)
+    // the readout functions change what a knob says, not what is stored
+    auto fParam = [&](const char* id, const char* name, juce::NormalisableRange<float> r, float def,
+                      juce::AudioParameterFloatAttributes attr = plainAttributes())
     {
-        p.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID { id, 1 }, name, r, def));
+        p.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID { id, 1 }, name, r, def, attr));
     };
-    auto uParam = [&](const char* id, const char* name, float def) { fParam(id, name, unitRange(), def); };
+    auto uParam = [&](const char* id, const char* name, float def) { fParam(id, name, unitRange(), def, pctAttributes()); };
     auto cParam = [&](const char* id, const char* name, juce::StringArray choices, int def)
     {
         p.push_back(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID { id, 1 }, name, choices, def));
@@ -66,7 +84,7 @@ APVTS::ParameterLayout MatterToneProcessor::createLayout()
 
     // ---- v2 helpers (versionHint = 2) ----
     auto fParam2 = [&](const char* id, const char* name, juce::NormalisableRange<float> r, float def,
-                       juce::AudioParameterFloatAttributes attr = {})
+                       juce::AudioParameterFloatAttributes attr = plainAttributes())
     {
         p.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID { id, 2 }, name, r, def, attr));
     };
@@ -209,22 +227,47 @@ MatterToneProcessor::MatterToneProcessor()
    #endif
 
     // Mode-dependent visibility: keep every param registered; only the UI reacts.
-    apvts.addParameterListener(pid::engine, this);
+    for (auto* id : kViewParams)
+        apvts.addParameterListener(id, this);
     handleAsyncUpdate();
 }
 
 MatterToneProcessor::~MatterToneProcessor()
 {
-    apvts.removeParameterListener(pid::engine, this);
+    for (auto* id : kViewParams)
+        apvts.removeParameterListener(id, this);
     cancelPendingUpdate();
 }
 
+// Which of several alternative controls is on screen. A time can be set three
+// ways: the classic 0..1 knob, an absolute time ("timed"), or a beat division
+// ("timed" + "beats"); an LFO rate is in Hz or in beats.
 void MatterToneProcessor::handleAsyncUpdate()
 {
    #if MATTER_USE_FOLEYS
+    auto on  = [this](const char* id) { return apvts.getRawParameterValue(id)->load() > 0.5f; };
+    auto set = [this](const char* prop, bool v) { magicState.getPropertyAsValue(prop).setValue(v); };
+
     const bool perc = (int) apvts.getRawParameterValue(pid::engine)->load() == 1;
-    magicState.getPropertyAsValue("showModal").setValue(! perc);
-    magicState.getPropertyAsValue("showPerc").setValue(perc);
+    set("showModal", ! perc);
+    set("showPerc",  perc);
+
+    const bool attackTimed = on(pid::attackOvr), attackBeats = on(pid::attackSync);
+    set("view:attackKnob",  ! attackTimed);
+    set("view:attackTimed", attackTimed);
+    set("view:attackMs",    attackTimed && ! attackBeats);
+    set("view:attackDiv",   attackTimed && attackBeats);
+
+    const bool loadTimed = on(pid::loadOvr), loadBeats = on(pid::loadSync);
+    set("view:loadKnob",  ! loadTimed);
+    set("view:loadTimed", loadTimed);
+    set("view:loadMs",    loadTimed && ! loadBeats);
+    set("view:loadDiv",   loadTimed && loadBeats);
+
+    set("view:lfoAHz",  ! on(pid::lfoASync));
+    set("view:lfoADiv", on(pid::lfoASync));
+    set("view:lfoBHz",  ! on(pid::lfoBSync));
+    set("view:lfoBDiv", on(pid::lfoBSync));
    #endif
 }
 
