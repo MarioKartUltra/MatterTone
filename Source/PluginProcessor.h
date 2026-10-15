@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone II — PluginProcessor.h
 //  Thin JUCE wrapper around the pure DSP core (matter::MatterSynth). Owns the

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone POC — Presets.h
 //  The ten factory presets, expressed purely as MatterParams (parameter STATES,

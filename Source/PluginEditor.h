@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone POC — PluginEditor.h
 //  A functional (not fancy) editor: preset selector, grouped parameter panels,

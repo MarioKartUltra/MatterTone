@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 cmake_minimum_required(VERSION 3.22)
 
 project(MatterTone VERSION 2.0.0 LANGUAGES C CXX)
@@ -22,27 +24,9 @@ option(MATTERTONE_GUI_EDITOR "Open the foleys WYSIWYG editor window with the plu
 option(MATTERTONE_INSTALL_AFTER_BUILD "Copy the plugins into the user plug-in folders after building" ON)
 option(MATTER_USE_FCWT   "Build the real-time fCWT scalogram view (needs FFTW3f)"        ON)
 
-# -----------------------------------------------------------------------------
-# JUCE — use a local checkout (no network / no global install).
-#   Priority: -DJUCE_DIR=...  >  ./external/JUCE  >  ~/Downloads/JUCE  >  FetchContent
-# -----------------------------------------------------------------------------
-if(DEFINED JUCE_DIR AND EXISTS "${JUCE_DIR}/CMakeLists.txt")
-    message(STATUS "MatterTone: using JUCE at ${JUCE_DIR}")
-    add_subdirectory("${JUCE_DIR}" "${CMAKE_BINARY_DIR}/JUCE")
-elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/JUCE/CMakeLists.txt")
-    message(STATUS "MatterTone: using JUCE at external/JUCE")
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/external/JUCE" "${CMAKE_BINARY_DIR}/JUCE")
-elseif(EXISTS "$ENV{HOME}/Downloads/JUCE/CMakeLists.txt")
-    message(STATUS "MatterTone: using JUCE at $ENV{HOME}/Downloads/JUCE")
-    add_subdirectory("$ENV{HOME}/Downloads/JUCE" "${CMAKE_BINARY_DIR}/JUCE")
-else()
-    message(STATUS "MatterTone: no local JUCE found — fetching JUCE 8.0.7")
-    include(FetchContent)
-    FetchContent_Declare(JUCE
-        GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-        GIT_TAG        8.0.7)
-    FetchContent_MakeAvailable(JUCE)
-endif()
+# JUCE and foleys_gui_magic: a local checkout, else fetched (cmake/ThirdParty.cmake)
+set(THIRDPARTY_WITH_FOLEYS ${MATTER_USE_FOLEYS})
+include(cmake/ThirdParty.cmake)
 
 # =============================================================================
 #  Plugin target
@@ -95,18 +79,6 @@ target_link_libraries(MatterTone PRIVATE
 
 # ---- optional foleys_gui_magic (WYSIWYG GUI + visualisers) ------------------
 if(MATTER_USE_FOLEYS)
-    # Locate a local foleys checkout: -DFOLEYS_DIR=... > external/foleys_gui_magic
-    if(DEFINED FOLEYS_DIR AND EXISTS "${FOLEYS_DIR}/modules/foleys_gui_magic/foleys_gui_magic.h")
-    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/foleys_gui_magic/modules/foleys_gui_magic/foleys_gui_magic.h")
-        set(FOLEYS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/foleys_gui_magic")
-    else()
-        message(FATAL_ERROR "MATTER_USE_FOLEYS=ON but no foleys_gui_magic checkout found (set -DFOLEYS_DIR=...)")
-    endif()
-    message(STATUS "MatterTone: using foleys_gui_magic at ${FOLEYS_DIR}")
-
-    # Consume ONLY the JUCE module (juce_add_module) so foleys' own examples/tests
-    # CMake — which FetchContents a second JUCE — never runs.
-    juce_add_module("${FOLEYS_DIR}/modules/foleys_gui_magic")
     target_link_libraries(MatterTone PRIVATE foleys_gui_magic)
 
     # foleys 1.3.x uses C++20; the palette (WYSIWYG editor) is on; no OpenGL dep.
@@ -126,55 +98,19 @@ endif()
 
 # ---- optional fCWT real-time scalogram (FFTW3f) ----------------------------
 if(MATTER_USE_FCWT)
-    # Locate a local fCWT checkout (no network): -DFCWT_DIR=... > external/fCWT > ~/projects/fCWT
-    if(DEFINED FCWT_DIR AND EXISTS "${FCWT_DIR}/src/fcwt/fcwt.cpp")
-    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/fCWT/src/fcwt/fcwt.cpp")
-        set(FCWT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/fCWT")
-    elseif(EXISTS "$ENV{HOME}/projects/fCWT/src/fcwt/fcwt.cpp")
-        set(FCWT_DIR "$ENV{HOME}/projects/fCWT")
-    else()
-        message(FATAL_ERROR "MATTER_USE_FCWT=ON but no fCWT checkout found (set -DFCWT_DIR=...)")
-    endif()
-    message(STATUS "MatterTone: using fCWT at ${FCWT_DIR}")
-
-    # Prefer the UNIVERSAL static fftw archive (arm64 + x86_64, prebuilt at
-    # ~/projects/fftw-universal) so the universal plugin build links cleanly —
-    # the homebrew archive is arm64-only and must NOT be picked for universal
-    # builds. Fall back to homebrew static, then shared.
-    # -DMATTER_FFTW_DIR=... points at another prebuilt copy (lib/libfftw3f.a and
-    # include/fftw3.h), e.g. one built with -ffile-prefix-map for builds that go
-    # to other people.
-    set(MATTER_FFTW_DIR "$ENV{HOME}/projects/fftw-universal" CACHE PATH
-        "Prebuilt universal static FFTW3f: lib/libfftw3f.a and include/fftw3.h")
-    if(EXISTS "${MATTER_FFTW_DIR}/lib/libfftw3f.a")
-        set(FFTW3F_LIB "${MATTER_FFTW_DIR}/lib/libfftw3f.a")
-        set(FFTW3_INC  "${MATTER_FFTW_DIR}/include")
-        message(STATUS "MatterTone: linking universal static FFTW (${FFTW3F_LIB})")
-    else()
-        set(_matter_saved_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
-        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-        find_library(FFTW3F_STATIC fftw3f PATHS /opt/homebrew/opt/fftw/lib /usr/local/lib)
-        set(CMAKE_FIND_LIBRARY_SUFFIXES ${_matter_saved_suffixes})
-        if(FFTW3F_STATIC)
-            set(FFTW3F_LIB ${FFTW3F_STATIC})
-            message(STATUS "MatterTone: linking FFTW statically (${FFTW3F_LIB})")
-        else()
-            find_library(FFTW3F_LIB fftw3f PATHS /opt/homebrew/opt/fftw/lib /usr/local/lib REQUIRED)
-            message(WARNING "MatterTone: static fftw not found — linking shared libfftw3f (external dylib dependency)")
-        endif()
-        find_path(FFTW3_INC fftw3.h PATHS /opt/homebrew/opt/fftw/include /usr/local/include REQUIRED)
-    endif()
+    # fCWT is vendored under Source/third_party/fcwt (Apache-2.0); FFTW3f per cmake/FFTW3f.cmake.
+    include(cmake/FFTW3f.cmake)
 
     # fCWT compiled scalar (no -mavx on arm64) and single-threaded (no OpenMP dep).
     target_compile_definitions(MatterTone PRIVATE MATTER_USE_FCWT=1 SINGLE_THREAD=1)
-    target_include_directories(MatterTone PRIVATE "${FFTW3_INC}" "${FCWT_DIR}/src/fcwt")
+    target_include_directories(MatterTone PRIVATE "${FFTW3F_INC}" Source/third_party/fcwt)
     target_sources(MatterTone PRIVATE
-        "${FCWT_DIR}/src/fcwt/fcwt.cpp"
+        Source/third_party/fcwt/fcwt.cpp
         Source/ui/ScalogramEngine.cpp)
     target_link_libraries(MatterTone PRIVATE ${FFTW3F_LIB})
 
     # fcwt.cpp is third-party: silence its warnings so JUCE's warning flags don't error.
-    set_source_files_properties("${FCWT_DIR}/src/fcwt/fcwt.cpp"
+    set_source_files_properties(Source/third_party/fcwt/fcwt.cpp
         PROPERTIES COMPILE_FLAGS "-w")
 endif()
 

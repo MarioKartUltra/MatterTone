@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone POC — MatterVoice.cpp
 //  See MatterVoice.h and MODEL.md for the model. Implementation notes:

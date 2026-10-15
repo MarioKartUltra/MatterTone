@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "MatterTone II"
+type: software
+authors:
+  - given-names: "Abraham Joseph"
+    family-names: "Okayli Masaryk"
+    email: "ajokaylimasaryk@uh.edu"
+    affiliation: "University of Houston"
+version: "2.0.0"
+date-released: "2026-10-14"
+license: AGPL-3.0-or-later
+abstract: >-
+  A synthesizer whose sound is the numerical integration of driven, dissipative nonlinear dynamical systems, with a percussion engine and a real-time CWT scalogram.
+keywords:
+  - audio plugin
+  - JUCE
+  - synthesizer
+  - nonlinear dynamics
+  - physical modelling
+  - wavelets

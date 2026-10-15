@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone POC — Config.h
 //  Single home for hard limits, structural constants, and safety thresholds.

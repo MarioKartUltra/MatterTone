@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone POC — MatterVoice.h
 //  One polyphonic voice: a driven, dissipative, finite-dimensional nonlinear

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 # =============================================================================
 #  MatterTone POC — build.sh
 #  Robust local build on Apple Silicon. Pins Apple clang and the Xcode SDK, and

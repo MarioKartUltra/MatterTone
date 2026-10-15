@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone POC — WavFile.h
 //  Tiny self-contained 16-bit PCM WAV writer for the offline render/test harness.

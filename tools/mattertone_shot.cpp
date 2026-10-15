@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 // =============================================================================
 //  MatterTone II — mattertone_shot
 //  Offscreen UI screenshot harness. Links the juce_add_plugin shared-code
@@ -29,8 +31,8 @@
 namespace
 {
 
-constexpr const char* kDefaultOutDir =
-    "/private/tmp/claude-501/-Users-amasaryk-projects/fc9277dc-03c0-456c-8d90-535220843ea7/scratchpad/shots/MatterTone";
+// default output: ./shots under the current directory (pass a path to change it)
+static juce::String defaultOutDir() { return juce::File::getCurrentWorkingDirectory().getChildFile ("shots").getFullPathName(); }
 
 // juce::MessageManager::runDispatchLoopUntil() is compiled out unless
 // JUCE_MODAL_LOOPS_PERMITTED=1 (it is not, and we must not change the plugin's
@@ -507,7 +509,7 @@ int main (int argc, char** argv)
     if (argc > 1 && juce::String (argv[1]) == "--selftest")
         return runSelfTest();
 
-    const juce::File outDir (argc > 1 ? juce::String (argv[1]) : juce::String (kDefaultOutDir));
+    const juce::File outDir (argc > 1 ? juce::String (argv[1]) : defaultOutDir());
     outDir.createDirectory();
 
     const auto shots = makeShots();
