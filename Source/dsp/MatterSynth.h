@@ -6,6 +6,7 @@
 //  Pure C++17, NO JUCE dependency.
 // =============================================================================
 #pragma once
+#include <cmath>
 
 #include <array>
 #include <vector>
@@ -29,6 +30,10 @@ public:
         scopeBuf.assign(scopeSize, 0.0f);
         scopePos = 0;
         applyOversampling(params.oversampling);
+        // the output gain glides to its target over kGainGlideSecs: a knob moved
+        // while a note sounds must not step the waveform at every block boundary
+        gainCoeff = 1.0 - std::exp(-1.0 / (kGainGlideSecs * std::max(1.0, sr)));
+        gainLive  = params.output;
     }
 
     void setParameters(const MatterParams& p)
@@ -123,7 +128,8 @@ public:
                 if (voices[i].isActive())
                     mix += voices[i].renderSample();
 
-            mix *= gain;
+            gainLive += (gain - gainLive) * gainCoeff;   // per sample, so the step is inaudible
+            mix *= gainLive;
             if (!std::isfinite(mix)) mix = 0.0;          // never emit NaN/Inf
             if (mix >  1.5) mix =  1.5;                  // final gentle safety clamp
             if (mix < -1.5) mix = -1.5;
@@ -190,6 +196,10 @@ private:
     }
 
     double sr = 48000.0;
+
+    static constexpr double kGainGlideSecs = 0.010;
+
+    double gainLive = 0.7, gainCoeff = 1.0;   // the output gain in force, and its per-sample approach
     MatterParams params;
     std::array<MatterVoice, cfg::kMaxVoices> voices;
     std::array<std::uint64_t, cfg::kMaxVoices> age {};

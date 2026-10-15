@@ -85,6 +85,90 @@ static void check(bool cond, const char* name, const std::string& detail = "")
     if (!cond) ++failures;
 }
 
+
+// ---- Test: a knob moved while a note sounds must not click ---------------------
+// Parameters arrive once per block. Without smoothing, each step lands as a kink
+// in the waveform at the block boundary: the second difference there is far
+// larger than anywhere inside the blocks. A clean tone (no crackle, no
+// agitation) makes the interior second difference tiny, so the ratio is sharp.
+static void testParameterSmoothing(double sr, int os)
+{
+    std::printf("Test: parameter smoothing (no clicks at block boundaries)\n");
+    auto sweep = [&](const char* name, auto&& apply, bool percussion = false)
+    {
+        MatterSynth synth;
+        MatterParams p;
+        p.oversampling = os; p.crackleCoupling = 0.0; p.agitation = 0.0; p.brittleness = 0.0;
+        p.snapDepth = 0.0; p.nonlinStiffness = 0.1; p.damping = 0.0; p.memory = 0.0; p.eventMix = 0.0;
+        p.attack = 0.0;
+        if (percussion) { p.engine = EngineMode::Percussion; p.wireAmount = 0.0; p.dampTilt = 0.1; }
+        apply(p, 0.0);
+        synth.prepare(sr, 512);
+        synth.setParameters(p);
+        synth.noteOn(57, 0.8);                               // 220 Hz pluck
+
+        // the pluck decays within a few hundred ms: sweep while it is audible,
+        // after the onset ramp, and judge each block against its own interior
+        constexpr int block = 512;
+        const int settle = (int) (0.04 * sr) / block, move = (int) (0.40 * sr) / block;
+        std::vector<float> L((size_t) block), R((size_t) block);
+        float prev1 = 0.0f, prev2 = 0.0f;
+        for (int b = 0; b < settle; ++b)
+        {
+            synth.renderBlock(L.data(), R.data(), block);
+            prev2 = L[(size_t) block - 2]; prev1 = L[(size_t) block - 1];
+        }
+        double worst = 0.0; int judged = 0;
+        for (int b = 0; b < move; ++b)
+        {
+            apply(p, (double) b / (double) (move - 1));
+            synth.setParameters(p);
+            synth.renderBlock(L.data(), R.data(), block);
+            double boundary = 0.0, interior = 0.0, peak = 0.0;
+            for (int n = 0; n < block; ++n)
+            {
+                const double y0 = L[(size_t) n];
+                const double y1 = n >= 1 ? L[(size_t) n - 1] : prev1;
+                const double y2 = n >= 2 ? L[(size_t) n - 2] : (n == 1 ? prev1 : prev2);
+                const double d2 = std::fabs(y0 - 2.0 * y1 + y2);
+                peak = std::max(peak, std::fabs(y0));
+                if (n < 2) boundary = std::max(boundary, d2);
+                else       interior = std::max(interior, d2);
+            }
+            prev2 = L[(size_t) block - 2]; prev1 = L[(size_t) block - 1];
+            if (peak < 1.0e-4) continue;                     // inaudible: not judged
+            worst = std::max(worst, boundary / std::max(interior, 1.0e-12));
+            ++judged;
+        }
+        char buf[160];
+        std::snprintf(buf, sizeof(buf), "worst boundary/interior kink = %.1f over %d blocks", worst, judged);
+        check(judged >= 8 && worst < 3.0, name, buf);
+    };
+    sweep("output gain sweep is click-free",  [](MatterParams& p, double f) { p.output  = 0.2 + 0.7 * f; });
+    sweep("tension sweep is click-free",      [](MatterParams& p, double f) { p.tension = 0.8 + 0.8 * f; });
+    sweep("damping sweep is click-free",      [](MatterParams& p, double f) { p.damping = 0.0 + 0.5 * f; });
+    sweep("coupling sweep is click-free",     [](MatterParams& p, double f) { p.coupling = 0.0 + 0.9 * f; });
+    sweep("body mix sweep is click-free",     [](MatterParams& p, double f) { p.bodyMix = 0.0 + 1.0 * f; });
+    sweep("event mix sweep is click-free",    [](MatterParams& p, double f) { p.eventMix = 0.0 + 1.0 * f; });
+    sweep("agc sweep is click-free",          [](MatterParams& p, double f) { p.agc = 0.0 + 1.0 * f; });
+    sweep("hardening sweep is click-free",    [](MatterParams& p, double f) { p.hardening = -1.0 + 2.0 * f; });
+    sweep("nonlinear stiffness sweep is click-free", [](MatterParams& p, double f) { p.nonlinStiffness = 0.0 + 1.0 * f; });
+    sweep("mode ratio sweep is click-free",   [](MatterParams& p, double f) { p.modeRatio = 1.2 + 1.5 * f; });
+    sweep("contact hardness sweep is click-free", [](MatterParams& p, double f) { p.contactHardness = 0.0 + 1.0 * f; });
+    sweep("strike position sweep is click-free",  [](MatterParams& p, double f) { p.strikePosition = 0.0 + 1.0 * f; });
+    sweep("nonlinear damping sweep is click-free", [](MatterParams& p, double f) { p.nonlinDamping = 0.0 + 1.0 * f; });
+    // the percussion engine is reconfigured every block from the parameters
+    sweep("percussion: output gain sweep is click-free", [](MatterParams& p, double f) { p.output = 0.2 + 0.7 * f; }, true);
+    sweep("percussion: tension sweep is click-free",     [](MatterParams& p, double f) { p.tension = 0.8 + 0.8 * f; }, true);
+    sweep("percussion: berger sweep is click-free",      [](MatterParams& p, double f) { p.bergerAmount = 0.0 + 1.0 * f; }, true);
+    sweep("percussion: cavity tune sweep is click-free", [](MatterParams& p, double f) { p.cavityTune = 0.2 + 1.0 * f; }, true);
+    sweep("percussion: cavity amount sweep is click-free", [](MatterParams& p, double f) { p.cavityAmount = 0.0 + 1.0 * f; }, true);
+    sweep("percussion: damping tilt sweep is click-free", [](MatterParams& p, double f) { p.dampTilt = 0.0 + 1.0 * f; }, true);
+    sweep("percussion: damping sweep is click-free",     [](MatterParams& p, double f) { p.damping = 0.0 + 0.5 * f; }, true);
+    sweep("percussion: mode count sweep is click-free",  [](MatterParams& p, double f) { p.membraneModes = 2 + (int) (10.0 * f); }, true);
+    sweep("percussion: wire amount sweep is click-free", [](MatterParams& p, double f) { p.wireAmount = 0.0 + 1.0 * f; }, true);
+}
+
 // ---- Test 1: zero-input decay ------------------------------------------------
 static void testZeroInputDecay(double sr, int os)
 {
@@ -570,6 +654,7 @@ int main(int argc, char** argv)
         testLfo(sr);
         testSeedPolicy();
         testTempoAndUnits();
+        testParameterSmoothing(sr, os);
         std::printf("\n%d test(s) failed.\n", failures);
     }
 
