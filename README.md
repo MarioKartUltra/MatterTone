@@ -31,13 +31,17 @@ cone-of-influence controls. See [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) f
 ## Install a release (no build needed)
 
 Download `MatterTone-II-2.0.0-macOS.zip` from the [Releases](https://github.com/MarioKartUltra/MatterTone/releases)
-page and unzip it. The bundles are signed ad hoc rather than notarised, so macOS quarantines them
-after the download. Clear that first, then copy them into the user plug-in folders:
+page and unzip it; that makes a folder `MatterTone-II-2.0.0-macOS`. Copy the two plug-in
+bundles into the user plug-in folders, by dragging them in the Finder or with the two `cp` lines.
+Then clear the quarantine flag: the bundles are signed ad hoc rather than notarised, so macOS marks
+them after the download and the DAW will not load them until the mark is gone.
 
 ```sh
-xattr -dr com.apple.quarantine "MatterTone II.vst3" "MatterTone II.component" "MatterTone II.app"
+cd ~/Downloads/MatterTone-II-2.0.0-macOS
 cp -R "MatterTone II.vst3"      ~/Library/Audio/Plug-Ins/VST3/
 cp -R "MatterTone II.component" ~/Library/Audio/Plug-Ins/Components/
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"MatterTone II.vst3" \
+                               ~/Library/Audio/Plug-Ins/Components/"MatterTone II.component" "MatterTone II.app"
 ```
 
 Then rescan in the DAW (Ableton Live: Settings → Plug-Ins → Rescan; Logic and GarageBand pick up
