@@ -65,7 +65,7 @@
         <Sigil border="0" margin="2" padding="0" background-color="00000000"/>
         <PresetMenu border="0" margin="6 4" padding="0" background-color="00000000" lookAndFeel="LnfV2"/>
         <Scalogram border="0" margin="0" padding="0" background-color="00000000"/>
-        <KeyboardComponent border="0" margin="2" padding="0" background-color="00000000"/>
+        <Keyboard border="0" margin="2" padding="0" background-color="00000000"/>
       </Types>
       <Palettes>
         <default/>
@@ -284,7 +284,7 @@
     </View>
 
     <!-- ── keyboard ──────────────────────────────────────────────────────── -->
-    <KeyboardComponent height="64" flex-grow="0"
+    <Keyboard height="64" flex-grow="0"
                        key-down-color="FFE0813E" mouse-over-color="50E0813E"/>
   </View>
 </magic>

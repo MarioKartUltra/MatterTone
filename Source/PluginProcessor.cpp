@@ -10,6 +10,7 @@
  #include "BinaryData.h"
  #include "common/acv2/ui/Theme.h"
  #include "common/acv2/ui/LnfV2.h"
+#include "common/acv2/ui/KeyboardItem.h"
 #endif
 
 using APVTS = juce::AudioProcessorValueTreeState;
@@ -279,6 +280,7 @@ void MatterToneProcessor::initialiseBuilder(foleys::MagicGUIBuilder& builder)
     builder.registerJUCEFactories();
     builder.registerJUCELookAndFeels();
     builder.registerLookAndFeel("LnfV2", std::make_unique<acv2::ui::LnfV2>(acv2::theme::kMatterTone));
+    builder.registerFactory("Keyboard", &acv2::KeyboardItem::factory);   // focus-aware on-screen keyboard
     builder.registerFactory("Sigil", &SigilItem::factory);
     builder.registerFactory("PresetMenu", &PresetMenuItem::factory);
    #if MATTER_USE_FCWT

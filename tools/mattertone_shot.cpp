@@ -400,6 +400,16 @@ int runOne (const Shot& shot, int index, const juce::File& outDir)
 //  Control wiring self-test (--selftest). The fascia has pages: every page is
 //  walked in each state, so a control only has to be on screen somewhere.
 // -----------------------------------------------------------------------------
+
+// The on-screen keyboard inside an editor (the layout's Keyboard item).
+static juce::MidiKeyboardComponent* findKeyboard (juce::Component& c)
+{
+    if (auto* k = dynamic_cast<juce::MidiKeyboardComponent*> (&c)) return k;
+    for (auto* child : c.getChildren())
+        if (auto* k = findKeyboard (*child)) return k;
+    return nullptr;
+}
+
 int runSelfTest()
 {
     juce::ScopedJuceInitialiser_GUI juceInit;
@@ -514,6 +524,14 @@ int runSelfTest()
             proc.panic();
         }
         else expect (false, "the editor is the foleys editor");
+
+        // hosted (this harness is not a standalone app): the keyboard never takes keyboard focus,
+        // so a click on it does not swallow the host's typed keys
+        {
+            auto* keys = findKeyboard (*ed);
+            expect (keys != nullptr, "the layout has an on-screen keyboard");
+            expect (keys != nullptr && ! keys->getWantsKeyboardFocus(), "hosted, the on-screen keyboard does not take keyboard focus");
+        }
 
         rc = test.report();
         ed.reset();
