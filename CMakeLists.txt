@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Abraham Joseph Okayli Masaryk
 cmake_minimum_required(VERSION 3.22)
 
-project(MatterTone VERSION 2.0.1 LANGUAGES C CXX)
+project(MatterTone VERSION 2.0.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
