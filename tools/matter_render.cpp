@@ -571,7 +571,7 @@ static void testSeedPolicy()
 static void testTempoAndUnits()
 {
     using namespace acv2;
-    bool ok = tempo::kNumDivisions == 16
+    bool ok = tempo::kNumDivisions == 21
            && std::fabs(tempo::divisionToMs( 8, 120.0) - 500.0)    < 1e-9   // 1/4
            && std::fabs(tempo::divisionToMs( 5, 120.0) - 250.0)    < 1e-9   // 1/8
            && std::fabs(tempo::divisionToMs( 3, 120.0) - 250.0*2/3.0) < 1e-9 // 1/8T
