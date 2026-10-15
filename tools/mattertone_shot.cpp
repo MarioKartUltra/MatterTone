@@ -491,6 +491,30 @@ int runSelfTest()
         expect (std::abs (typed (pid::tension, "2.5") - 2.5f) < 1.0e-3f,   "typing '2.5' into tension gives 2.5");
         expect (std::abs (typed (pid::attackMs, "20 ms") - 20.0f) < 0.1f,  "typing '20 ms' into the attack time gives 20 ms");
 
+        // the on-screen keyboard: a note from the host lights it, and its keys reach the synth
+        std::printf ("  [keyboard]\n");
+        if (auto* me = dynamic_cast<foleys::MagicPluginEditor*> (ed.get()))
+        {
+            auto& keys = me->getGUIBuilder().getMagicState().getKeyboardState();
+            juce::AudioBuffer<float> audio (2, 512);
+            juce::MidiBuffer midi;
+            midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+            proc.processBlock (audio, midi); midi.clear();
+            expect (keys.isNoteOn (1, 60), "a note from the host lights the on-screen keyboard");
+            midi.addEvent (juce::MidiMessage::noteOff (1, 60), 0);
+            proc.processBlock (audio, midi); midi.clear();
+            expect (! keys.isNoteOn (1, 60), "the host's note-off releases the on-screen key");
+            proc.panic();
+            proc.processBlock (audio, midi);
+            keys.noteOn (1, 64, 0.8f);                       // a click on the on-screen keyboard
+            proc.processBlock (audio, midi); midi.clear();
+            expect (proc.activeVoices() > 0, "a key pressed on the on-screen keyboard sounds");
+            keys.noteOff (1, 64, 0.0f);
+            proc.processBlock (audio, midi); midi.clear();
+            proc.panic();
+        }
+        else expect (false, "the editor is the foleys editor");
+
         rc = test.report();
         ed.reset();
     }

@@ -417,8 +417,13 @@ void MatterToneProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 
     configureLfos();
 
-    // Inject notes played on the editor's on-screen keyboard into the MIDI stream.
+    // The on-screen keyboard: notes from the host light it, and its own keys are
+    // injected into the stream. With foleys the keyboard belongs to magicState.
+#if MATTER_USE_FOLEYS
+    magicState.processMidiBuffer(midi, n, true);
+#else
     keyboardState.processNextMidiBuffer(midi, 0, n, true);
+#endif
 
     // Route MIDI. Block-granular timing is sufficient here.
     for (const auto meta : midi)
