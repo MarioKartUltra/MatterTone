@@ -169,6 +169,48 @@ static void testParameterSmoothing(double sr, int os)
     sweep("percussion: damping sweep is click-free",     [](MatterParams& p, double f) { p.damping = 0.0 + 0.5 * f; }, true);
     sweep("percussion: mode count sweep is click-free",  [](MatterParams& p, double f) { p.membraneModes = 2 + (int) (10.0 * f); }, true);
     sweep("percussion: wire amount sweep is click-free", [](MatterParams& p, double f) { p.wireAmount = 0.0 + 1.0 * f; }, true);
+
+    // A knob the host moves once per block must not add high-frequency energy
+    // (bursts of snap and crackle events at the block rate) compared with
+    // holding it: the knobs that shape the bistable landscape are judged here.
+    auto hfExcess = [&](const char* name, auto&& apply, double limit)
+    {
+        auto energy = [&](bool move)
+        {
+            MatterSynth synth;
+            MatterParams p;
+            p.oversampling = os; p.attack = 0.0;
+            apply(p, 0.0);
+            synth.prepare(sr, 512);
+            synth.setParameters(p);
+            synth.noteOn(57, 0.8);
+            constexpr int block = 512;
+            const int settle = (int) (0.04 * sr) / block, span = (int) (0.40 * sr) / block;
+            std::vector<float> L((size_t) block), R((size_t) block);
+            for (int b = 0; b < settle; ++b) synth.renderBlock(L.data(), R.data(), block);
+            double e = 0.0, y1 = 0.0, y2 = 0.0;
+            for (int b = 0; b < span; ++b)
+            {
+                if (move) { apply(p, (double) b / (double) (span - 1)); synth.setParameters(p); }
+                synth.renderBlock(L.data(), R.data(), block);
+                for (int n = 0; n < block; ++n)
+                {
+                    const double d2 = (double) L[(size_t) n] - 2.0 * y1 + y2;
+                    e += d2 * d2; y2 = y1; y1 = (double) L[(size_t) n];
+                }
+            }
+            return e;
+        };
+        const double held = energy(false), moved = energy(true);
+        const double ratio = moved / std::max(held, 1.0e-20);
+        char buf[120];
+        std::snprintf(buf, sizeof(buf), "moved/held high-frequency energy = %.2f (limit %.1f)", ratio, limit);
+        check(ratio < limit, name, buf);
+    };
+    hfExcess("snap depth moved by the host adds no buzz",       [](MatterParams& p, double f) { p.snapDepth = f; }, 1.5);
+    hfExcess("memory moved by the host adds no buzz",           [](MatterParams& p, double f) { p.memory = f; }, 1.5);
+    hfExcess("crackle coupling moved by the host adds no buzz", [](MatterParams& p, double f) { p.crackleCoupling = f; }, 1.5);
+    hfExcess("adhesion moved by the host adds no buzz",         [](MatterParams& p, double f) { p.adhesion = f; }, 1.5);
 }
 
 // ---- Test 1: zero-input decay ------------------------------------------------

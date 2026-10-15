@@ -36,6 +36,10 @@ public:
         // while a note sounds must not step the waveform at every block boundary
         gainCoeff = 1.0 - std::exp(-1.0 / (kGainGlideSecs * std::max(1.0, sr)));
         gainLive  = params.output;
+        glideCoeff = 1.0 - std::exp(-(double) kChunk / (kParamGlideSecs * std::max(1.0, sr)));
+        settleChunksFull = (int) std::ceil(7.0 * kParamGlideSecs * std::max(1.0, sr) / kChunk);
+        snapLive();
+        settleChunks = 0;
     }
 
     void setParameters(const MatterParams& p)
@@ -50,8 +54,12 @@ public:
             lastGlobalSeed = params.seed;
             seedPolicy.setGlobalSeed((std::uint64_t) params.seed);
         }
-        // propagate live edits to sounding voices
-        for (auto& v : voices) if (v.isActive()) v.updateParameters(params);
+        // propagate live edits to sounding voices: the discrete fields now, the
+        // continuous knobs from where they are, gliding toward the new values
+        if (!liveInit) snapLive();
+        settleChunks = settleChunksFull;
+        const MatterParams m = liveParams();
+        for (auto& v : voices) if (v.isActive()) v.updateParameters(m);
     }
 
     const MatterParams& parameters() const { return params; }
@@ -84,7 +92,7 @@ public:
         voices[slot].setAftertouch(aftertouch);
         voices[slot].setInitialMemory(materialState);   // persistent history
         params.noteSeed = seedPolicy.onNoteOn(midiNote); // v2: policy-driven seed
-        voices[slot].noteOn(midiNote, velocity01, params);
+        voices[slot].noteOn(midiNote, velocity01, liveInit ? liveParams() : params);
         lastVoice = slot;
         age[slot] = ++ageCounter;
     }
@@ -123,7 +131,21 @@ public:
         // renders are bit-identical regardless of host buffer size).
         constexpr double materialCoeff = 1.0e-4;
 
-        for (int n = 0; n < numSamples; ++n)
+        for (int n0 = 0; n0 < numSamples; n0 += kChunk)
+        {
+        const int n1 = std::min(numSamples, n0 + kChunk);
+        if (settleChunks > 0)                        // a knob is on its way: glide, then tell the voices
+        {
+            --settleChunks;
+            for (int i = 0; i < kNumGlided; ++i)
+            {
+                const double target = params.*kGlided[i];
+                live[i] = settleChunks > 0 ? live[i] + (target - live[i]) * glideCoeff : target;
+            }
+            const MatterParams m = liveParams();
+            for (auto& v : voices) if (v.isActive()) v.updateParameters(m);
+        }
+        for (int n = n0; n < n1; ++n)
         {
             double mix = 0.0;
             for (int i = 0; i < cfg::kMaxVoices; ++i)
@@ -147,6 +169,7 @@ public:
             // persistent material state (history-dependent, deterministic).
             if (lastVoice >= 0 && voices[lastVoice].isActive())
                 materialState += materialCoeff * (voices[lastVoice].memoryValue() - materialState);
+        }
         }
     }
 
@@ -202,7 +225,41 @@ private:
     static constexpr double kGainGlideSecs = 0.010;
 
     double gainLive = 0.7, gainCoeff = 1.0;   // the output gain in force, and its per-sample approach
-    MatterParams params;
+    MatterParams params;                      // the target: what the host last set
+
+    // Knobs the host moves once per block glide toward their new values in
+    // kChunk-sample steps while a move settles. Stepped once per block, the
+    // knobs that shape the bistable and crackle landscape fire a burst of
+    // events at every boundary, a buzz while turning. Discrete fields and the
+    // output gain (its own per-sample glide) are not part of this.
+    static constexpr int    kChunk = 8;
+    static constexpr double kParamGlideSecs = 0.010;
+    static constexpr double MatterParams::* kGlided[] = {
+        &MatterParams::tension, &MatterParams::nonlinStiffness, &MatterParams::hardening,
+        &MatterParams::damping, &MatterParams::nonlinDamping, &MatterParams::coupling,
+        &MatterParams::brittleness, &MatterParams::adhesion, &MatterParams::roughness,
+        &MatterParams::healing, &MatterParams::memory, &MatterParams::contactHardness,
+        &MatterParams::contactLoss, &MatterParams::crackleCoupling, &MatterParams::attack,
+        &MatterParams::pluckEnergy, &MatterParams::loadingRate, &MatterParams::snapDepth,
+        &MatterParams::strikePosition, &MatterParams::velocitySens, &MatterParams::agitation,
+        &MatterParams::modeRatio, &MatterParams::scaleSpread, &MatterParams::energyToPitch,
+        &MatterParams::stabilityBias, &MatterParams::bodyMix, &MatterParams::eventMix,
+        &MatterParams::agc, &MatterParams::bergerAmount, &MatterParams::cavityAmount,
+        &MatterParams::cavityTune, &MatterParams::cavityLoss, &MatterParams::wireAmount,
+        &MatterParams::dampTilt, &MatterParams::malletHardness };
+    static constexpr int kNumGlided = (int) (sizeof(kGlided) / sizeof(kGlided[0]));
+    double live[kNumGlided] {};               // the continuous knobs in force
+    double glideCoeff = 1.0;                  // per-chunk approach toward the target
+    int    settleChunks = 0, settleChunksFull = 1;
+    bool   liveInit = false;
+
+    MatterParams liveParams() const
+    {
+        MatterParams m = params;
+        for (int i = 0; i < kNumGlided; ++i) m.*kGlided[i] = live[i];
+        return m;
+    }
+    void snapLive() { for (int i = 0; i < kNumGlided; ++i) live[i] = params.*kGlided[i]; liveInit = true; }
     std::array<MatterVoice, cfg::kMaxVoices> voices;
     std::array<std::uint64_t, cfg::kMaxVoices> age {};
     std::uint64_t ageCounter = 0;
