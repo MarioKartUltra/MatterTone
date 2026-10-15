@@ -90,6 +90,7 @@ void MatterVoice::reset()
     released  = false;
     fading    = false;
     fadeCounter = 0;
+    killing = false;
     envPeak = 0.0;
     silenceCounter = 0;
     dcX1 = dcY1 = hpX1 = hpY1 = 0.0;
@@ -409,7 +410,8 @@ float MatterVoice::renderSample()
     double decimated = 0.0;
     // Once a blow-up has been detected we FREEZE integration: continuing to
     // integrate a runaway state would overflow to +/-Inf then NaN during the fade.
-    if (!fading)
+    // A voice giving way to a new note (killing) keeps integrating under its fade.
+    if (!fading || killing)
     {
         for (int i = 0; i < os; ++i)
         {
@@ -428,7 +430,7 @@ float MatterVoice::renderSample()
     if (blew && !fading)
     {
         fading = true;
-        fadeCounter = cfg::kFadeOutSamples;
+        fadeLen = fadeCounter = cfg::kFadeOutSamples;
         ++resetCount;
         q1 = p1 = q2 = p2 = 0.0; sSnap = 0.0;
         crackle.reset();
@@ -468,7 +470,7 @@ float MatterVoice::renderSample()
     // ---- graceful numerical-failure handling ---------------------------------
     if (fading)
     {
-        const double g = (double) fadeCounter / (double) cfg::kFadeOutSamples;
+        const double g = (double) fadeCounter / (double) fadeLen;
         out *= g;
         if (--fadeCounter <= 0)
         {
@@ -539,7 +541,7 @@ void MatterVoice::noteOn(int midiNote, double velocity01, const MatterParams& pa
         xi = clampd(initialMemory, 0.0, 1.0);
         released = false;
         active = true;
-        fading = false;
+        fading = false; killing = false;
         silenceCounter = 0;
         envPeak = 0.0;
         attackEnv = 0.0;
@@ -570,7 +572,7 @@ void MatterVoice::noteOn(int midiNote, double velocity01, const MatterParams& pa
 
     released = false;
     active = true;
-    fading = false;
+    fading = false; killing = false;
     silenceCounter = 0;
     envPeak = 0.0;
     attackEnv = 0.0;   // start the onset ramp

@@ -21,8 +21,9 @@ namespace cfg
     // Brief suggests N = 8 or 16; profile before increasing.
     inline constexpr int   kNumCrackle       = 16;
 
-    // Maximum polyphony (voices). Global param clamps the active count 1..kMaxVoices.
-    inline constexpr int   kMaxVoices        = 8;
+    // Voices in the pool: the polyphony parameter (1..8) counts the voices that
+    // sound; the rest carry the 2 ms fade of a voice that gave way to a new note.
+    inline constexpr int   kMaxVoices        = 16;
 
     // Internal oversampling factors selectable by the Oversampling parameter.
     // The nonlinear ODE is integrated at sampleRate * factor.

@@ -54,6 +54,12 @@ public:
             lastGlobalSeed = params.seed;
             seedPolicy.setGlobalSeed((std::uint64_t) params.seed);
         }
+        // polyphony turned down: the voices beyond it fade out
+        {
+            const int maxV = std::min(std::max(params.numVoices, 1), cfg::kMaxVoices);
+            int extra = soundingVoices() - maxV;
+            while (extra-- > 0) { const int k = quietestVoice(true); if (k < 0) break; voices[k].kill(); }
+        }
         // propagate live edits to sounding voices: the discrete fields now, the
         // continuous knobs from where they are, gliding toward the new values
         if (!liveInit) snapLive();
@@ -68,23 +74,21 @@ public:
     void noteOn(int midiNote, double velocity01)
     {
         const int maxV = std::min(std::max(params.numVoices, 1), cfg::kMaxVoices);
-        int slot = -1;
 
-        // free voice within the allowed polyphony?
-        for (int i = 0; i < maxV; ++i)
-            if (!voices[i].isActive()) { slot = i; break; }
-
-        // else steal the quietest (lowest output envelope), preferring released ones.
-        if (slot < 0)
+        // The polyphony counts sounding voices. One too many: the quietest of
+        // them (a released one first) fades out under the new note, on its own
+        // slot, instead of restarting from silence, which stepped the waveform.
+        if (soundingVoices() >= maxV)
         {
-            double bestScore = 1.0e300;
-            for (int i = 0; i < maxV; ++i)
-            {
-                const double relBonus = voices[i].isReleased() ? 0.0 : 1.0e6;
-                const double score = voices[i].lastOutputPeak() + relBonus;
-                if (score < bestScore) { bestScore = score; slot = i; }
-            }
+            const int k = quietestVoice(true);
+            if (k >= 0) voices[k].kill();
         }
+
+        // The new note takes an idle voice; failing that, the one closest to silence.
+        int slot = -1;
+        for (int i = 0; i < cfg::kMaxVoices; ++i)
+            if (!voices[i].isActive()) { slot = i; break; }
+        if (slot < 0) slot = quietestVoice(false);
         if (slot < 0) slot = 0;
 
         voices[slot].setPitchBendSemitones(pitchBendSemis);
@@ -215,6 +219,27 @@ public:
     const MatterVoice& voice(int i) const { return voices[i]; }
 
 private:
+    int soundingVoices() const
+    {
+        int n = 0;
+        for (const auto& v : voices) if (v.isActive() && !v.isFading()) ++n;
+        return n;
+    }
+
+    // The quietest active voice (lowest output envelope), a released one first;
+    // soundingOnly leaves the fading ones out. -1 when there is none.
+    int quietestVoice(bool soundingOnly) const
+    {
+        int best = -1; double bestScore = 1.0e300;
+        for (int i = 0; i < cfg::kMaxVoices; ++i)
+        {
+            if (!voices[i].isActive() || (soundingOnly && voices[i].isFading())) continue;
+            const double score = voices[i].lastOutputPeak() + (voices[i].isReleased() ? 0.0 : 1.0e6);
+            if (score < bestScore) { bestScore = score; best = i; }
+        }
+        return best;
+    }
+
     void applyOversampling(int factor)
     {
         for (auto& v : voices) v.setOversampling(factor);

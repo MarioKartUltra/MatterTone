@@ -64,6 +64,19 @@ public:
     int   midiNote()  const { return note; }
     bool  isReleased() const { return released; }
 
+    // Give way to a new note: fade to silence over `seconds` (2 ms: sudden to
+    // the ear, no step in the waveform), then free the voice. A fading voice
+    // no longer counts toward the polyphony.
+    void  kill(double seconds = 0.002)
+    {
+        if (!active || fading) return;
+        fading = true;
+        killing = true;                // keep integrating: only a blow-up freezes
+        const int n = (int) (seconds * sampleRate);
+        fadeLen = fadeCounter = n > 1 ? n : 1;
+    }
+    bool  isFading() const { return fading; }
+
     void  reset();   // hard reset state to silent equilibrium
     void  panic()    { reset(); active = false; }
 
@@ -163,7 +176,9 @@ private:
     // ---- lifecycle / safety ---------------------------------------------------
     bool   active = false;
     bool   fading = false;
+    bool   killing = false;                 // the fade is a note giving way, not a blow-up
     int    fadeCounter = 0;
+    int    fadeLen = cfg::kFadeOutSamples;   // length of the fade in progress
     int    resetCount = 0;
     double envPeak = 0.0;                   // output envelope follower
     int    silenceCounter = 0;

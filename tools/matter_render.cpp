@@ -633,6 +633,34 @@ static void testTempoAndUnits()
     check(ok, "units: ms / Hz / note / percent round-trips");
 }
 
+// A note that takes the only voice must not step the waveform: the voice that
+// gives way fades out under the new note instead of restarting from silence.
+static void testVoiceSteal(double sr, int os)
+{
+    std::printf("Test: voice stealing (the voice that gives way fades, no step)\n");
+    MatterSynth synth;
+    MatterParams p;
+    p.oversampling = os; p.numVoices = 1;
+    p.crackleCoupling = 0.0; p.agitation = 0.0; p.brittleness = 0.0; p.snapDepth = 0.0;
+    p.damping = 0.0; p.memory = 0.0; p.eventMix = 0.0;          // a clean, sustained tone
+    p.velocitySens = 1.0;                                       // so velocity 0 is a silent note
+    synth.prepare(sr, 512);
+    synth.setParameters(p);
+    synth.noteOn(57, 0.8);
+    const int pre = (int) (0.12 * sr), post = (int) (0.03 * sr);
+    std::vector<float> L((size_t) (pre + post)), R((size_t) (pre + post));
+    synth.renderBlock(L.data(), R.data(), pre);
+    synth.noteOn(64, 0.0);                                      // takes the only voice, silently:
+                                                                // what is heard is the voice giving way
+    synth.renderBlock(L.data() + pre, R.data() + pre, post);
+    double steady = 0.0, around = 0.0;
+    for (int n = pre / 2; n < pre - 1; ++n) steady = std::max(steady, std::fabs((double) L[(size_t) n + 1] - L[(size_t) n]));
+    for (int n = pre - 1; n < pre + (int) (0.004 * sr); ++n) around = std::max(around, std::fabs((double) L[(size_t) n + 1] - L[(size_t) n]));
+    char buf[160];
+    std::snprintf(buf, sizeof(buf), "largest step at the steal = %.4f, in the held note = %.4f", around, steady);
+    check(steady > 1.0e-4 && around < 2.0 * steady, "a note taking the only voice makes no step", buf);
+}
+
 // -----------------------------------------------------------------------------
 static void renderAllPresets(const std::string& outDir, double sr, int os)
 {
@@ -699,6 +727,7 @@ int main(int argc, char** argv)
         testSeedPolicy();
         testTempoAndUnits();
         testParameterSmoothing(sr, os);
+    testVoiceSteal(sr, os);
         std::printf("\n%d test(s) failed.\n", failures);
     }
 
